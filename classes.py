@@ -2,6 +2,8 @@ import pygame
 import math
 import sys
 import json
+import random
+pygame.key.set_repeat (1,1)
 
 class Brick:
     def __init__(self, x, y, w, h, hp, type):
@@ -14,8 +16,21 @@ class Brick:
     def display(self):
         pygame.image.load("brick.png")
     def onBallCollision(self, ball):
-        if ball.
+        if 640-ball.y-ball.radius < self.y+self.h/2: #공이 벽돌 아래쪽에 부딪힘
+            self.hp=-1
+            ball.vy = -ball.vy
+        elif 640-ball.y+ball.radius < self.y+self.h/2: #공이 벽돌 위쪽에 부딪힘
+            self.hp=-1
+            ball.vy = -ball.vy
+        elif ball.x+ball.radius > self.x-self.w/2: # 공이 벽돌 왼쪽에 부딪힘
+            self.hp-=1
+            ball.vx = -ball.vx
+        elif ball.x-ball.radius > self.x+self.w/2: # 공이 벽돌 오른쪽에 부딪힘
+            self.hp-=1
+            ball.vx = -ball.vx
     def death(self):
+        if self.hp<=0:
+            pass # 죽어라
 
 
 class DropItem:
@@ -25,10 +40,17 @@ class DropItem:
         self.vx = vx
         self.vy = vy 
 
+
+class Boundary:
+    
+
 class Ball:
     max_exp = [0]
-    perks = {"dmgLv"}
+    perks = {}
     buffs = {}
+    with open('sources/files/perks.jsonn', 'r') as f:
+        perks_data = json.load(f)
+    
     max_lv = 50
     choice = 0
     def __init__(self, x, y, vx, vy, radius):
@@ -40,6 +62,7 @@ class Ball:
         self.exp = 0
         self.dmg = 1
         self.radius = radius
+        self.on_Bar = True
         for i in range(1, 51):
             self.max_exp.append(math.floor(10+2**(i/2)))
     def display(self):
@@ -53,34 +76,42 @@ class Ball:
             self.lv += 1
             self.choice += 1
     def perkSelection(self):
-
+        if self.choice >= 1:
+            random_perk_choice = list(random.choices(self.perks_data, k=3))
+            
     def dmgCalc(self):
 
     def onBarCollision(self):
         if abs(self.x-('여기 bar 윗 경계 x값 넣을 것'))<self.radius:
             self.vx = -self.vx
-    
-        
-        
-    def update(self): #매 프레임마다 업데이트 되는 공기중에서의 움직임
-        self.freeMove() 
-        self.lvUpCheck()
+
+    def update(self, bar): #매 프레임마다 업데이트 되는 공기중에서의 움직임
+        if self.on_Bar:
+            self.x = bar.x
+            self.y = bar.y+10
+        else:
+            self.freeMove() 
+            self.lvUpCheck()
+
+    def release(self, bar):
+        if self.on_Bar:
+            vx += 
         
 class Bar:
-    def __init__(self, x, y):
+    vx = 10
+    def __init__(self, x, y, len):
         self.x = x
         self.y = y
     def move(self): #키 입력에 따라서 Bar 좌우로 위치 이동
-        keys = pygame.key.get_pressed()
-        if keys[pygame.K_LEFT]:
-            y+=1 # 속도 바꾸기
-        if keys[pygame.K_RIGHT]:
-            y-=1
+        for event in pygame.event.get():
+            if event.type == pygame.KEYDOWN:
+                key = event.key
+                if key == pygame.K_RIGHT:
+                    x+=1
+                elif key == pygame.K_LEFT:
+                    x-=1
             
-def gamestart():
-    pass
-
-def show_start_screen(screen): # 아무 키나 누르면 시작
+def gamestart(screen): # 아무 키나 누르면 시작
     font = pygame.font.Font(None, 70)
     text = font.render("Press Any Key to Start", True, 'WHITE')
     text_rect = text.get_rect(center=(320, 320))
