@@ -1,5 +1,7 @@
 import pygame
 import math
+import sys
+import json
 
 class Brick:
     def __init__(self, x, y, w, h, hp, type):
@@ -37,6 +39,7 @@ class Ball:
         self.lv = 1
         self.exp = 0
         self.dmg = 1
+        self.radius = radius
         for i in range(1, 51):
             self.max_exp.append(math.floor(10+2**(i/2)))
     def display(self):
@@ -50,9 +53,14 @@ class Ball:
             self.lv += 1
             self.choice += 1
     def perkSelection(self):
+
     def dmgCalc(self):
 
     def onBarCollision(self):
+        if abs(self.x-('여기 bar 윗 경계 x값 넣을 것'))<self.radius:
+            self.vx = -self.vx
+    
+        
         
     def update(self): #매 프레임마다 업데이트 되는 공기중에서의 움직임
         self.freeMove() 
@@ -71,6 +79,32 @@ class Bar:
             
 def gamestart():
     pass
-def gameover(score):
-    pass
+
+def show_start_screen(screen): # 아무 키나 누르면 시작
+    font = pygame.font.Font(None, 70)
+    text = font.render("Press Any Key to Start", True, 'WHITE')
+    text_rect = text.get_rect(center=(320, 320))
+    screen.fill('BLACK')
+    screen.blit(text, text_rect)
+    pygame.display.flip()
+    
+    waiting = True
+    while waiting:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            if event.type == pygame.KEYDOWN:
+                waiting = False
+
+
+
+def gameover(screen, score):
+    font = pygame.font.Font(None, 50)
+    text = font.render(f"Game Over. \n Your score is {score}", True, WHITE)
+    text_rect = text.get_rect(center=(320, 320))
+    screen.blit(text, text_rect)
+    pygame.display.flip()
+    pygame.time.wait(3000)  # 3초 대기
         
+    
