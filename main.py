@@ -14,7 +14,7 @@ screen_type = "main"
 perk_selecting = False
 
 ball = classes.Ball(SCREEN_WIDTH/2, SCREEN_HEIGHT-100, 0, 0, 5)
-bar = classes.Bar(SCREEN_WIDTH/2, SCREEN_HEIGHT-100, )
+bar = classes.Bar(SCREEN_WIDTH/2, SCREEN_HEIGHT-100, 10, 100)
 bricks = []
 
 
@@ -27,8 +27,21 @@ while running:
         screen_type = "ingame"
     elif screen_type == "ingame":
         if not ball.perk_selecting:
-            pass
+            
+            #display
+            ball.display(screen)
+            bar.display(screen)
+            for brick in bricks:
+                brick.display(screen)
+
+            #event handling
+            for event in pygame.event.get():
+                bar.move(event)
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_SPACE:
+                        ball.release(bar)
         else:
+            pass
             
 
     
