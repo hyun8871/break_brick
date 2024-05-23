@@ -30,6 +30,8 @@ while running:
     elif screen_type == "ingame":
         if ball.choice == 0:
             
+            ball.update(bar)
+
             #display
             screen.fill('white')
             ball.display(screen)
@@ -37,9 +39,12 @@ while running:
             for brick in bricks:
                 brick.display(screen)
             pygame.display.flip()
+
             #event handling
+
+            bar.move()
             for event in pygame.event.get():
-                bar.move(event)
+                
                 if event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_SPACE:
                         ball.release(bar)

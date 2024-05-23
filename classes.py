@@ -5,7 +5,13 @@ import json
 import random
 
 
+SCREEN_WIDTH = 600
+SCREEN_HEIGHT = 900
 
+LEFT_BOUNDARY = 10
+RIGHT_BOUNDARY = SCREEN_WIDTH - 11
+UPPER_BOUNDARY = 10
+LOWER_BOUNDARY = SCREEN_HEIGHT - 11
 
 img_path = "sources/images/"
 
@@ -17,10 +23,12 @@ class Brick:
         self.h = h
         self.hp = hp
         self.type = type
+        self.img = pygame.image.load(img_path+"brick.png").convert_alpha()
     def display(self, screen):
-        img = pygame.image.load(img_path+"brick.png")
-        img = pygame.transform.scale(img, (self.w, self.h))
-        screen.blit(img, (self.x, self.y))
+        self.img = pygame.transform.scale(self.img, (self.w, self.h))
+        img_rect = self.img.get_rect()
+        img_rect.center = (self.x, self.y)
+        screen.blit(self.img, img_rect)
     def onBallCollision(self, ball):
         if 540-ball.y-ball.radius < self.y+self.h/2: #공이 벽돌 아래쪽에 부딪힘
             self.hp=-1
@@ -71,6 +79,7 @@ class Ball:
     
     max_lv = 30
     choice = 0
+    
     def __init__(self, x, y, radius):
         self.x = x
         self.y = y
@@ -83,14 +92,18 @@ class Ball:
         self.on_bar = True
         for i in range(1, 51):
             self.max_exp.append(math.floor(10+2**(i/2)))
+        self.img = pygame.image.load(img_path+"ball.png").convert_alpha()
+        
     def display(self, screen):
-        img = pygame.image.load(img_path+"ball.png")
-        img = pygame.transform.scale(img, (self.radius*2, self.radius*2))
-        screen.blit(img, (self.x, self.y))
+        self.img = pygame.transform.scale(self.img, (self.radius*2, self.radius*2))
+        img_rect = self.img.get_rect()
+        img_rect.center = (self.x, self.y)
+        screen.blit(self.img, img_rect)
 
     def freeMove(self):
         self.x+=self.vx
         self.y+=self.vy
+
     def lvUpCheck(self):
         while self.exp >= self.max_exp[self.lv]:
             self.exp -= self.max_exp[self.lv]
@@ -103,42 +116,69 @@ class Ball:
     def dmgCalc(self):
         pass
 
-    def onBarCollision(self):
-        if abs(self.x-('여기 bar 윗 경계 x값 넣을 것'))<self.radius:
-            self.vx = -self.vx
+    def onBarCollision(self, bar):
+        if abs(bar.y - self.y) <= bar.h/2:
+            tmp_v = math.sqrt(self.vy**2 + self.vx**2)
+            if self.x-bar.x == 0:
+                tmp_deg = math.pi/2
+            else:
+                tmp_deg = math.atan((self.y-bar.y)/(self.x-bar.x))
+            print(tmp_deg)
+    
+    def onWallCollision(self):
+        if self.y - UPPER_BOUNDARY < self.radius or LOWER_BOUNDARY - self.y < self.radius:
+            self.vy *= -1
+        if self.x - LEFT_BOUNDARY < self.radius or RIGHT_BOUNDARY - self.x < self.radius:
+            self.vx *= -1
 
     def update(self, bar): #매 프레임마다 업데이트 되는 공기중에서의 움직임
         if self.on_bar:
             self.x = bar.x
-            self.y = bar.y+10
+            self.y = bar.y-20
         else:
+            self.onWallCollision()
+            self.onBarCollision(bar)
             self.freeMove() 
         self.lvUpCheck()
 
     def release(self, bar):
         if self.on_bar:
             self.on_bar = False
-            self.vy += 8
-            self.vx += 2
+            self.vy = -8
+            self.vx = 2
         
 class Bar:
-    vx = 10
     def __init__(self, x, y, vx, l):
         self.x = x
         self.y = y
         self.vx = vx
         self.l = l
+        self.h = 20
+        self.img = pygame.image.load(img_path+"bar.png").convert_alpha()
     def display(self, screen):
-        img = pygame.image.load(img_path+"bar.png")
-        img = pygame.transform.scale(img, (self.l, 20))
-        screen.blit(img, (self.x, self.y))
-    def move(self, event): #키 입력에 따라서 Bar 좌우로 위치 이동
-        if event.type == pygame.KEYDOWN:
-            key = event.key
-            if key == pygame.K_RIGHT:
-                vx+=self.vx
-            elif key == pygame.K_LEFT:
-                vx-=self.vx
+        self.img = pygame.transform.scale(self.img, (self.l, self.h))
+        img_rect = self.img.get_rect()
+        img_rect.center = (self.x, self.y)
+        screen.blit(self.img, img_rect)
+    def move(self): #키 입력에 따라서 Bar 좌우로 위치 이동
+        temp_x_move = 0
+        for event in pygame.event.get():
+            if event.type == pygame.KEYDOWN:
+                key = event.key
+                if key == pygame.K_RIGHT:
+                    temp_x_move=1
+                elif key == pygame.K_LEFT:
+                    temp_x_move=-1
+            if event.type == pygame.KEYUP:
+                key = event.key
+                if key == pygame.K_RIGHT:
+                    temp_x_move=0
+                elif key == pygame.K_LEFT:
+                    temp_x_move=0
+        if temp_x_move == 1:
+            self.x += self.vx
+        elif temp_x_move == -1:
+            self.x -= self.vx
             
 def gamestart(screen): # 아무 키나 누르면 시작
     font = pygame.font.Font(None, 70)
