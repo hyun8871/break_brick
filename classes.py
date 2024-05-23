@@ -3,7 +3,9 @@ import math
 import sys
 import json
 import random
-pygame.key.set_repeat (1,1)
+
+
+
 
 img_path = "sources/images/"
 
@@ -64,7 +66,7 @@ class Ball:
     max_exp = [0]
     perks = {}
     buffs = {}
-    with open('sources/files/perks.jsonn', 'r') as f:
+    with open('sources/files/perks.json', 'r', encoding='utf-8') as f:
         perks_data = json.load(f)
     
     max_lv = 30
