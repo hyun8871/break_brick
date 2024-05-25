@@ -4,7 +4,7 @@ import sys
 import json
 import random
 
-
+#ㅇㅇㅇㅇㅇㅇㅇ
 SCREEN_WIDTH = 600
 SCREEN_HEIGHT = 900
 
@@ -19,6 +19,7 @@ fonts_path = "sources/fonts/"
 myFont = pygame.font.Font( fonts_path+"neodgm.ttf", 30)
 
 class StageManager:
+    a = 3
     bricks = []
     unbreakable_bricks = []
     stage = 0
