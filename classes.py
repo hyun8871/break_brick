@@ -16,8 +16,6 @@ LOWER_BOUNDARY = SCREEN_HEIGHT - 11
 img_path = "sources/images/"
 fonts_path = "sources/fonts/"
 
-myFont = pygame.font.Font( fonts_path+"neodgm.ttf", 30)
-
 class StageManager:
     bricks = []
     unbreakable_bricks = []
