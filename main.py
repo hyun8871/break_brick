@@ -18,20 +18,27 @@ bar = classes.Bar(SCREEN_WIDTH/2, SCREEN_HEIGHT-100, 10, 100)
 bricks = []
 
 
+
 while running:
     clock.tick(60)
-    
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            running = False 
-        
+
     if screen_type == "main":
         print("ds")
         screen_type = "ingame"
+        
     elif screen_type == "ingame":
         if ball.choice == 0:
             
             ball.update(bar)
+
+            for event in pygame.event.get():
+                bar.getmove(event)
+                if event.type == pygame.QUIT:
+                    running = False 
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_SPACE:
+                        ball.release(bar)
+            bar.move()
 
             #display
             screen.fill('white')
@@ -40,16 +47,8 @@ while running:
             for brick in bricks:
                 brick.display(screen)
             pygame.display.flip()
-
-            #event handling
-
-            bar.move()
-            for event in pygame.event.get():
-                if event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_SPACE:
-                        ball.release(bar)
+                
         else:
             pass
 
 pygame.quit()
-#### dkdkdkdkdk

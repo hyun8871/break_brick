@@ -161,20 +161,20 @@ class Bar:
         img_rect = self.img.get_rect()
         img_rect.center = (self.x, self.y)
         screen.blit(self.img, img_rect)
-    def move(self): #키 입력에 따라서 Bar 좌우로 위치 이동
-        for event in pygame.event.get():
-            if event.type == pygame.KEYDOWN:
-                key = event.key
-                if key == pygame.K_RIGHT:
-                    self.temp_x_move=1
-                elif key == pygame.K_LEFT:
-                    self.temp_x_move=-1
-            if event.type == pygame.KEYUP:
-                key = event.key
-                if key == pygame.K_RIGHT:
-                    self.temp_x_move=0
-                elif key == pygame.K_LEFT:
-                    self.temp_x_move=0
+    def getmove(self, event): #키 입력에 따라서 Bar 좌우로 위치 이동
+        if event.type == pygame.KEYDOWN:
+            key = event.key
+            if key == pygame.K_RIGHT:
+                self.temp_x_move=1
+            elif key == pygame.K_LEFT:
+                self.temp_x_move=-1
+        if event.type == pygame.KEYUP:
+            key = event.key
+            if key == pygame.K_RIGHT and self.temp_x_move==1:
+                self.temp_x_move=0
+            elif key == pygame.K_LEFT and self.temp_x_move==-1:
+                self.temp_x_move=0
+    def move(self):
         if self.temp_x_move == 1:
             self.x += self.vx
         elif self.temp_x_move == -1:
