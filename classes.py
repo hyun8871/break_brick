@@ -79,7 +79,7 @@ class Brick:
     def display(self, screen):
         self.img = pygame.transform.scale(self.img, (self.w, self.h))
         screen.blit(self.img, (self.x, self.y))
-        txt = self.font.render(str(self.hp), True, "red")
+        txt = self.font.render(str(self.hp), True, "white")
         txt_rect = txt.get_rect()
         txt_rect.center = (self.x+self.w/2, self.y+self.h/2)
         screen.blit(txt, txt_rect)
