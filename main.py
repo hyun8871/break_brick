@@ -14,7 +14,7 @@ screen_type = "main"
 perk_selecting = False
 
 ball = classes.Ball(SCREEN_WIDTH/2, SCREEN_HEIGHT-120, 5)
-bar = classes.Bar(SCREEN_WIDTH/2, SCREEN_HEIGHT-120, 10, 100)
+bar = classes.Bar(SCREEN_WIDTH/2, SCREEN_HEIGHT-120, 8, 120)
 bricks = []
 stage_manager = classes.StageManager()
 

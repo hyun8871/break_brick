@@ -67,13 +67,12 @@ class StageManager:
 class Brick:
     w = 75
     h = 40
-    def __init__(self, xi, yi, hp, type):
+    def __init__(self, xi, yi, hp):
         self.xi = xi
         self.yi = yi
         self.x = xi*self.w
         self.y = yi*self.h
         self.hp = hp
-        self.type = type
         self.img = pygame.image.load(img_path+"brick.png").convert_alpha()
         self.font = pygame.font.Font( fonts_path+"neodgm.ttf", 30)
     def display(self, screen):
@@ -87,13 +86,19 @@ class Brick:
     def onBallCollision(self, ball):
         if abs(self.y+self.h/2-ball.y) <= self.h/2+ball.radius and abs(self.x+self.w/2-ball.x) <= self.w/2+ball.radius:
             if abs(self.y+self.h/2-ball.y) >= self.h/2-ball.radius:
-                self.hp=-1
+                self.hp-=1
                 ball.vy = -ball.vy
                 ball.y += ball.vy
+                print(self.hp)
             else:
-                self.hp=-1
+                self.hp-=1
                 ball.vx = -ball.vx
                 ball.x += ball.vx
+                print(self.hp)
+
+class UnbreakableBrick(Brick):
+    def __init__(self, xi, yi, hp):
+        super.__init__(xi, yi, hp)
 
 
 class DropItem:
@@ -165,23 +170,36 @@ class Ball:
     def dmgCalc(self):
         pass
 
+    # def onBarCollision(self, bar):
+    #     if abs(bar.y - self.y) <= bar.h/2:
+    #         tmp_v = math.sqrt(self.vy**2 + self.vx**2)
+    #         if self.x-bar.x == 0:
+    #             tmp_deg = math.pi/2
+    #         else:
+    #             tmp_deg = math.atan((self.y-bar.y)/(self.x-bar.x))
+    #         print(tmp_deg)
+    #         self.vx = tmp_v*math.cos(tmp_deg)
+    #         self.vy = -tmp_v*math.sin(tmp_deg)
+    #         self.y += self.vy
+
     def onBarCollision(self, bar):
-        if abs(bar.y - self.y) <= bar.h/2:
+        if abs(self.y-bar.y) <= self.radius+bar.h/2 and abs(self.x-bar.x) <= self.radius+bar.l/2:
             tmp_v = math.sqrt(self.vy**2 + self.vx**2)
-            if self.x-bar.x == 0:
-                tmp_deg = math.pi/2
-            else:
-                tmp_deg = math.atan((self.y-bar.y)/(self.x-bar.x))
-            print(tmp_deg)
-            self.vx = tmp_v*math.cos(tmp_deg)
-            self.vy = -tmp_v*math.sin(tmp_deg)
+            stand_dis = 2*(self.x - bar.x)/bar.l
+            degree = 3/2*math.pi + (1/3)*math.pi*stand_dis
+            
+            self.vx = tmp_v*math.cos(degree)
+            self.vy = tmp_v*math.sin(degree)
+            self.x += self.vx
             self.y += self.vy
     
     def onWallCollision(self):
         if self.y - UPPER_BOUNDARY < self.radius or LOWER_BOUNDARY - self.y < self.radius:
             self.vy *= -1
+            self.y += self.vy
         if self.x - LEFT_BOUNDARY < self.radius or RIGHT_BOUNDARY - self.x < self.radius:
             self.vx *= -1
+            self.x += self.vx
 
     def update(self, bar): #매 프레임마다 업데이트 되는 공기중에서의 움직임
         if self.on_bar:
