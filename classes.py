@@ -124,6 +124,9 @@ class Ball:
             else:
                 tmp_deg = math.atan((self.y-bar.y)/(self.x-bar.x))
             print(tmp_deg)
+            self.vx = tmp_v*math.cos(tmp_deg)
+            self.vy = -tmp_v*math.sin(tmp_deg)
+            self.y += self.vy
     
     def onWallCollision(self):
         if self.y - UPPER_BOUNDARY < self.radius or LOWER_BOUNDARY - self.y < self.radius:
