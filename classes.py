@@ -15,19 +15,57 @@ LOWER_BOUNDARY = SCREEN_HEIGHT - 11
 
 img_path = "sources/images/"
 
+class StageManager:
+    bricks = []
+    unbreakable_bricks = []
+    stage = 0
+    with open('sources/files/maps.json', 'r', encoding='utf-8') as f:
+        map_list = json.load(f)
+    
+    def __init__(self):
+        pass
+    def new_stage(self):
+        if len(self.bricks) == 0:
+            self.stage += 1
+            self.unbreakable_bricks = []
+            map_type = random.choice(list(self.map_list.keys()))
+            for brick in self.map_list[map_type]:
+                sx, sy, ex, ey = 0, 0, 0, 0
+                ub = brick.get("unbreakable", False)
+                hp = brick.get("hp", 1)
+                hp = math.floor(hp*1.5**(self.stage-1))
+                if "x" in brick:
+                    sx = ex = brick["x"]
+                if "from_x" in brick and "to_x" in brick:
+                    sx = brick["from_x"]    
+                    ex = brick["to_x"]
+                if "y" in brick:
+                    sy = ey = brick["x"]
+                if "from_y" in brick and "to_y" in brick:
+                    sy = brick["from_x"]    
+                    ey = brick["to_x"]    
+                for y in range(sy, ey+1):
+                    for x in range(sx, ex+1):
+                        if ub: 
+                            self.unbreakable_bricks.append(Brick(x, y, 0, 1))
+                        else: 
+                            self.bricks.append(Brick(x, y, hp, 0))
+    def display_bricks(self, screen):
+        for brick in self.bricks:
+            brick.display(screen)
 class Brick:
-    def __init__(self, x, y, w, h, hp, type):
-        self.x = x
-        self.y = y
-        self.w = w
-        self.h = h
+    w = 75
+    h = 40
+    def __init__(self, xi, yi, hp, type):
+        self.xi = xi
+        self.yi = yi
         self.hp = hp
         self.type = type
         self.img = pygame.image.load(img_path+"brick.png").convert_alpha()
     def display(self, screen):
         self.img = pygame.transform.scale(self.img, (self.w, self.h))
         img_rect = self.img.get_rect()
-        img_rect.center = (self.x, self.y)
+        img_rect.center = (self.xi*self.w+self.w/2, self.yi*self.h+self.h/2)
         screen.blit(self.img, img_rect)
     def onBallCollision(self, ball):
         if 540-ball.y-ball.radius < self.y+self.h/2: #공이 벽돌 아래쪽에 부딪힘

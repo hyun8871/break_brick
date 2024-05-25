@@ -16,6 +16,7 @@ perk_selecting = False
 ball = classes.Ball(SCREEN_WIDTH/2, SCREEN_HEIGHT-100, 5)
 bar = classes.Bar(SCREEN_WIDTH/2, SCREEN_HEIGHT-100, 10, 100)
 bricks = []
+stage_manager = classes.StageManager()
 
 
 # 현석아 이거 보임??
@@ -27,6 +28,7 @@ while running:
         screen_type = "ingame"
         
     elif screen_type == "ingame":
+        stage_manager.new_stage()
         if ball.choice == 0:
             
             ball.update(bar)
