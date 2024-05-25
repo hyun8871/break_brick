@@ -18,7 +18,7 @@ bar = classes.Bar(SCREEN_WIDTH/2, SCREEN_HEIGHT-100, 10, 100)
 bricks = []
 
 
-
+# 현석아 이거 보임??
 while running:
     clock.tick(60)
 
