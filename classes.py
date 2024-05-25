@@ -35,51 +35,54 @@ class StageManager:
                 hp = brick.get("hp", 1)
                 hp = math.floor(hp*1.5**(self.stage-1))
                 if "x" in brick:
-                    sx = ex = brick["x"]
+                    sx = brick["x"]
+                    ex = brick["x"]
                 if "from_x" in brick and "to_x" in brick:
                     sx = brick["from_x"]    
                     ex = brick["to_x"]
                 if "y" in brick:
-                    sy = ey = brick["x"]
+                    sy = brick["y"]
+                    ey = brick["y"]
                 if "from_y" in brick and "to_y" in brick:
-                    sy = brick["from_x"]    
-                    ey = brick["to_x"]    
+                    sy = brick["from_y"]    
+                    ey = brick["to_y"]    
                 for y in range(sy, ey+1):
                     for x in range(sx, ex+1):
                         if ub: 
                             self.unbreakable_bricks.append(Brick(x, y, 0, 1))
                         else: 
                             self.bricks.append(Brick(x, y, hp, 0))
-    def display_bricks(self, screen):
+    def bricksCollision(self, ball):
+        for brick in self.bricks:
+            brick.onBallCollision(ball)
+    def bricksDisplay(self, screen):
         for brick in self.bricks:
             brick.display(screen)
+
 class Brick:
     w = 75
     h = 40
     def __init__(self, xi, yi, hp, type):
         self.xi = xi
         self.yi = yi
+        self.x = xi*self.w
+        self.y = yi*self.h
         self.hp = hp
         self.type = type
         self.img = pygame.image.load(img_path+"brick.png").convert_alpha()
     def display(self, screen):
         self.img = pygame.transform.scale(self.img, (self.w, self.h))
-        img_rect = self.img.get_rect()
-        img_rect.center = (self.xi*self.w+self.w/2, self.yi*self.h+self.h/2)
-        screen.blit(self.img, img_rect)
+        screen.blit(self.img, (self.x, self.y))
     def onBallCollision(self, ball):
-        if 540-ball.y-ball.radius < self.y+self.h/2: #공이 벽돌 아래쪽에 부딪힘
+        if abs(self.y+self.h/2-ball.y) <= self.h/2+ball.radius:
             self.hp=-1
             ball.vy = -ball.vy
-        elif 540-ball.y+ball.radius < self.y+self.h/2: #공이 벽돌 위쪽에 부딪힘
+            ball.y += ball.vy
+        if abs(self.x+self.w/2-ball.x) <= self.w/2+ball.radius:
             self.hp=-1
-            ball.vy = -ball.vy
-        elif ball.x+ball.radius > self.x-self.w/2: # 공이 벽돌 왼쪽에 부딪힘
-            self.hp-=1
             ball.vx = -ball.vx
-        elif ball.x-ball.radius > self.x+self.w/2: # 공이 벽돌 오른쪽에 부딪힘
-            self.hp-=1
-            ball.vx = -ball.vx
+            ball.x += ball.vx
+        
     def death(self):
         if self.hp<=0:
             pass # 죽어라

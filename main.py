@@ -2,7 +2,7 @@ import pygame
 import classes
 
 SCREEN_WIDTH = 600
-SCREEN_HEIGHT = 900
+SCREEN_HEIGHT = 800
 
 pygame.init()
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
@@ -13,8 +13,8 @@ running = True
 screen_type = "main"
 perk_selecting = False
 
-ball = classes.Ball(SCREEN_WIDTH/2, SCREEN_HEIGHT-100, 5)
-bar = classes.Bar(SCREEN_WIDTH/2, SCREEN_HEIGHT-100, 10, 100)
+ball = classes.Ball(SCREEN_WIDTH/2, SCREEN_HEIGHT-120, 5)
+bar = classes.Bar(SCREEN_WIDTH/2, SCREEN_HEIGHT-120, 10, 100)
 bricks = []
 stage_manager = classes.StageManager()
 
@@ -28,10 +28,10 @@ while running:
         screen_type = "ingame"
         
     elif screen_type == "ingame":
-        stage_manager.new_stage()
         if ball.choice == 0:
-            
+            stage_manager.new_stage()
             ball.update(bar)
+            stage_manager.bricksCollision(ball)
 
             for event in pygame.event.get():
                 bar.getmove(event)
@@ -44,6 +44,7 @@ while running:
 
             #display
             screen.fill('white')
+            stage_manager.bricksDisplay(screen)
             ball.display(screen)
             bar.display(screen)
             for brick in bricks:
