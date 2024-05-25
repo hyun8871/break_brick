@@ -32,6 +32,7 @@ while running:
             stage_manager.new_stage()
             ball.update(bar)
             stage_manager.bricksCollision(ball)
+            stage_manager.bricksDeathCheck()
 
             for event in pygame.event.get():
                 bar.getmove(event)

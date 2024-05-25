@@ -58,6 +58,10 @@ class StageManager:
     def bricksDisplay(self, screen):
         for brick in self.bricks:
             brick.display(screen)
+    def bricksDeathCheck(self):
+        for brick in self.bricks:
+            if brick.hp <= 0:
+                self.bricks.remove(brick)
 
 class Brick:
     w = 75
@@ -82,10 +86,6 @@ class Brick:
             self.hp=-1
             ball.vx = -ball.vx
             ball.x += ball.vx
-        
-    def death(self):
-        if self.hp<=0:
-            pass # 죽어라
 
 
 class DropItem:
