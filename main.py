@@ -37,14 +37,15 @@ while running:
     if screen_type == "main":
         print("ds")
         screen_type = "ingame"
-        
+         
     elif screen_type == "ingame":
+        #event handling
         if player.choice == 0:
             stage_manager.new_stage(player)
             player.ballsUpdate(bar, stage_manager)
             stage_manager.bricksDeathCheck(exp_manager)
             exp_manager.expsUpdate(bar, player)
-
+            player.lvUpCheck()
             for event in pygame.event.get():
                 bar.getmove(event)
                 if event.type == pygame.QUIT:
@@ -53,18 +54,27 @@ while running:
                     if event.key == pygame.K_SPACE:
                         player.ballsRelease(bar)
             bar.move()
-
-            #display
-            screen.fill('white')
-            stage_manager.bricksDisplay(screen)
-            player.ballsDisplay(screen)
-            exp_manager.expsDisplay(screen)
-            bar.display(screen)
-            for brick in bricks:
-                brick.display(screen)
-            pygame.display.flip()
-                
         else:
-            pass
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    running = False 
+                player.perkSelection(event)
+                
+        player.newPerkSelection()  
+        
+
+        
+        #display
+        screen.fill('white')
+        stage_manager.bricksDisplay(screen)
+        player.ballsDisplay(screen)
+        exp_manager.expsDisplay(screen)
+        bar.display(screen)
+        for brick in bricks:
+            brick.display(screen)
+        if player.choice > 0:
+            player.perkSelectionDisplay(screen)
+        pygame.display.flip()
+                
 
 pygame.quit()

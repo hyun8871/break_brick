@@ -10,7 +10,7 @@ SCREEN_HEIGHT = 800
 
 LEFT_BOUNDARY = 10
 RIGHT_BOUNDARY = SCREEN_WIDTH - 11
-UPPER_BOUNDARY = 10
+UPPER_BOUNDARY = 100
 LOWER_BOUNDARY = SCREEN_HEIGHT + 10
 
 img_path = "sources/images/"
@@ -20,8 +20,6 @@ class StageManager:
     bricks = []
     unbreakable_bricks = []
     stage = 0
-    
-    
     def __init__(self):
         with open('sources/files/maps.json', 'r', encoding='utf-8') as f:
             self.map_list = json.load(f)
@@ -84,7 +82,7 @@ class Brick:
         self.xi = xi
         self.yi = yi
         self.x = xi*self.w
-        self.y = yi*self.h
+        self.y = yi*self.h+UPPER_BOUNDARY
         self.max_hp = hp
         self.hp = hp
     def display(self, screen):
@@ -149,12 +147,21 @@ class Boundary:
         
     
 class Player:
+    font = 0
     max_exp = [0]
     perks = {}
     buffs = {}
     balls = []
+    random_perk_choice = []
+    perk_selection = 0
+    roman = [0, 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X']
     with open('sources/files/perks.json', 'r', encoding='utf-8') as f:
         perks_data = json.load(f)
+    available_perks = list(perks_data.keys())
+    for perk in perks_data.keys():
+        values = [0]
+        values.extend(list(perks_data[perk]["val1"].split("/")))
+        perks_data[perk]["val1"] = values
     
     max_lv = 30
     choice = 0
@@ -164,11 +171,14 @@ class Player:
         self.dmg = 1
         self.ball_v = 8
         for i in range(1, 51):
-            self.max_exp.append(math.floor(10+2**(i/2)))
+            self.max_exp.append(math.floor(10+1.2**i*2.5))
+        print(self.max_exp)
         self.balls.append(Ball(SCREEN_WIDTH/2, SCREEN_HEIGHT-120, 8, self.ball_v, True))
     def newStage(self):
         self.balls = []
-        self.balls.append(Ball(SCREEN_WIDTH/2, SCREEN_HEIGHT-120, 8, self.ball_v, True))
+        startBall = int(self.perks_data["startBall"]["val1"][self.perks.get("startBall", 0)])
+        for _ in range(1+startBall):
+            self.balls.append(Ball(SCREEN_WIDTH/2, SCREEN_HEIGHT-120, 8, self.ball_v, True))
     def ballsUpdate(self, bar, stage_manager):
         for ball in self.balls:
             ball.update(bar)
@@ -184,10 +194,64 @@ class Player:
             self.exp -= self.max_exp[self.lv]
             self.lv += 1
             self.choice += 1
+    def newPerkSelection(self):
+        if self.choice >= 1 and len(self.random_perk_choice) == 0:
+            self.random_perk_choice = list(random.sample(self.available_perks, k=3))
+    def perkSelection(self, event):
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_RIGHT:
+                self.perk_selection = (self.perk_selection+1)%3
+            if event.key == pygame.K_LEFT:
+                self.perk_selection = (self.perk_selection-1)%3
+            if event.key == pygame.K_SPACE:
+                self.choice -= 1
+                if self.random_perk_choice[self.perk_selection] in self.perks:
+                    self.perks[self.random_perk_choice[self.perk_selection]] += 1
+                    for ap in self.available_perks:
+                        if self.perks.get(ap, 0) >= self.perks_data[ap].get("maxlv", 999):
+                            self.available_perks.remove(ap)
+                            print(ap)
+                else:
+                    self.perks[self.random_perk_choice[self.perk_selection]] = 1
+                self.random_perk_choice = []
+    def neodgm(self, text, tx, ty, size, screen):
+        txts = text.split("$n")
+        i = 0
+        for txt in txts:
+            txt_font = pygame.font.Font( fonts_path+"neodgm.ttf", size)
+            txt = txt_font.render(txt, True, "white")
+            txt_rect = txt.get_rect()
+            txt_rect.center = (tx, ty+size*1.2*i)
+            screen.blit(txt, txt_rect)
+            i+=1
+    def perkDesc(self, perk, lv):
+        return self.perks_data[perk]["desc"].replace("{val1}", self.perks_data[perk]["val1"][lv])
+    def perkSelectionDisplay(self, screen):
+    
+        s = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
+        s.set_alpha(200)
+        s.fill((0,0,0))
+        screen.blit(s, (0,0))
+        self.neodgm("LEVEL UP!", SCREEN_WIDTH/2, 80, 50, screen)
+        self.neodgm("새 특성을 선택하세요", SCREEN_WIDTH/2, 125, 30, screen)
+        x_coord = [SCREEN_WIDTH/2-180, SCREEN_WIDTH/2, SCREEN_WIDTH/2+180]
 
-    def perkSelection(self):
-        if self.choice >= 1:
-            random_perk_choice = list(random.choices(self.perks_data, k=3))
+        for i in range(3):
+            print(i)
+            if self.perk_selection == i: 
+                pygame.draw.rect(screen, "white", [x_coord[i]-60, SCREEN_HEIGHT/2-100, 120, 120], 2)
+            cur_lv = self.perks.get(self.random_perk_choice[i], 0)+1
+            self.neodgm(self.perks_data[self.random_perk_choice[i]]["name"]+" "+self.roman[cur_lv], x_coord[i], SCREEN_HEIGHT/2-120, 18, screen)
+            self.neodgm(self.perkDesc(self.random_perk_choice[i], cur_lv), x_coord[i], SCREEN_HEIGHT/2+50, 15, screen )
+        self.neodgm('좌우 방향키로 특성 선택$n스페이스바로 특성 확정', SCREEN_WIDTH/2, SCREEN_HEIGHT-180, 20, screen)
+    
+    def damageCalc(self):
+        dmgAdd = self.perks_data["dmgAdd"]["val1"][self.perks.get("dmgAdd", 0)]
+        dmgMult = self.perks_data["dmgMult"]["val1"][self.perks.get("dmgMult", 0)]
+        return math.floor(float(dmgAdd+1)*float(100+dmgMult)/100)
+
+
+                
 
 class ExpManager:
     exps = []
