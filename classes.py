@@ -14,6 +14,9 @@ UPPER_BOUNDARY = 10
 LOWER_BOUNDARY = SCREEN_HEIGHT - 11
 
 img_path = "sources/images/"
+fonts_path = "sources/fonts/"
+
+myFont = pygame.font.Font( fonts_path+"neodgm.ttf", 30)
 
 class StageManager:
     bricks = []
@@ -78,14 +81,15 @@ class Brick:
         self.img = pygame.transform.scale(self.img, (self.w, self.h))
         screen.blit(self.img, (self.x, self.y))
     def onBallCollision(self, ball):
-        if abs(self.y+self.h/2-ball.y) <= self.h/2+ball.radius:
-            self.hp=-1
-            ball.vy = -ball.vy
-            ball.y += ball.vy
-        if abs(self.x+self.w/2-ball.x) <= self.w/2+ball.radius:
-            self.hp=-1
-            ball.vx = -ball.vx
-            ball.x += ball.vx
+        if abs(self.y+self.h/2-ball.y) <= self.h/2+ball.radius and abs(self.x+self.w/2-ball.x) <= self.w/2+ball.radius:
+            if abs(self.y+self.h/2-ball.y) >= self.h/2-ball.radius:
+                self.hp=-1
+                ball.vy = -ball.vy
+                ball.y += ball.vy
+            else:
+                self.hp=-1
+                ball.vx = -ball.vx
+                ball.x += ball.vx
 
 
 class DropItem:
