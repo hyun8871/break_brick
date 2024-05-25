@@ -16,7 +16,7 @@ LOWER_BOUNDARY = SCREEN_HEIGHT - 11
 img_path = "sources/images/"
 fonts_path = "sources/fonts/"
 
-myFont = pygame.font.Font( fonts_path+"neodgm.ttf", 30)
+#myFont = pygame.font.Font( fonts_path+"neodgm.ttf", 30)
 
 class StageManager:
     a = 3
@@ -163,16 +163,12 @@ class Ball:
         pass
 
     def onBarCollision(self, bar):
-        if abs(bar.y - self.y) <= bar.h/2:
+        if abs(bar.y - self.y) <= 0 and SCREEN_WIDTH/2-bar.l/2<self.x<SCREEN_WIDTH/2+bar.l/2:
             tmp_v = math.sqrt(self.vy**2 + self.vx**2)
-            if self.x-bar.x == 0:
-                tmp_deg = math.pi/2
-            else:
-                tmp_deg = math.atan((self.y-bar.y)/(self.x-bar.x))
-            print(tmp_deg)
-            self.vx = tmp_v*math.cos(tmp_deg)
-            self.vy = -tmp_v*math.sin(tmp_deg)
-            self.y += self.vy
+            stand_dis = (SCREEN_WIDTH/2+bar.l/2 - self.x)/bar.l
+            degree = (5/6)*math.pi - (2/3)*math.pi*stand_dis
+            self.vx = tmp_v*math.sin(degree)
+            self.vy = -tmp_v*math.cos(degree)
     
     def onWallCollision(self):
         if self.y - UPPER_BOUNDARY < self.radius or LOWER_BOUNDARY - self.y < self.radius:
@@ -224,9 +220,9 @@ class Bar:
             elif key == pygame.K_LEFT and self.temp_x_move==-1:
                 self.temp_x_move=0
     def move(self):
-        if self.temp_x_move == 1:
+        if self.temp_x_move == 1 and self.l/2<self.x + self.vx<SCREEN_WIDTH-self.l/2:
             self.x += self.vx
-        elif self.temp_x_move == -1:
+        elif self.temp_x_move == -1 and self.l/2<self.x - self.vx<SCREEN_WIDTH-self.l/2:
             self.x -= self.vx
             
 def gamestart(screen): # 아무 키나 누르면 시작
