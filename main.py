@@ -7,7 +7,6 @@ SCREEN_HEIGHT = 900
 pygame.init()
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 pygame.display.set_caption("Collision at boundary")
-pygame.key.set_repeat (1,1)
 clock = pygame.time.Clock()
 
 running = True
@@ -21,9 +20,11 @@ bricks = []
 
 while running:
     clock.tick(60)
+    
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False 
+        
     if screen_type == "main":
         print("ds")
         screen_type = "ingame"
@@ -44,7 +45,6 @@ while running:
 
             bar.move()
             for event in pygame.event.get():
-                
                 if event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_SPACE:
                         ball.release(bar)

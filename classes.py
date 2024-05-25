@@ -148,6 +148,7 @@ class Ball:
             self.vx = 2
         
 class Bar:
+    temp_x_move = 0
     def __init__(self, x, y, vx, l):
         self.x = x
         self.y = y
@@ -161,23 +162,22 @@ class Bar:
         img_rect.center = (self.x, self.y)
         screen.blit(self.img, img_rect)
     def move(self): #키 입력에 따라서 Bar 좌우로 위치 이동
-        temp_x_move = 0
         for event in pygame.event.get():
             if event.type == pygame.KEYDOWN:
                 key = event.key
                 if key == pygame.K_RIGHT:
-                    temp_x_move=1
+                    self.temp_x_move=1
                 elif key == pygame.K_LEFT:
-                    temp_x_move=-1
+                    self.temp_x_move=-1
             if event.type == pygame.KEYUP:
                 key = event.key
                 if key == pygame.K_RIGHT:
-                    temp_x_move=0
+                    self.temp_x_move=0
                 elif key == pygame.K_LEFT:
-                    temp_x_move=0
-        if temp_x_move == 1:
+                    self.temp_x_move=0
+        if self.temp_x_move == 1:
             self.x += self.vx
-        elif temp_x_move == -1:
+        elif self.temp_x_move == -1:
             self.x -= self.vx
             
 def gamestart(screen): # 아무 키나 누르면 시작
