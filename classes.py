@@ -16,10 +16,7 @@ LOWER_BOUNDARY = SCREEN_HEIGHT - 11
 img_path = "sources/images/"
 fonts_path = "sources/fonts/"
 
-myFont = pygame.font.Font( fonts_path+"neodgm.ttf", 30)
-
 class StageManager:
-    a = 3
     bricks = []
     unbreakable_bricks = []
     stage = 0
@@ -78,9 +75,15 @@ class Brick:
         self.hp = hp
         self.type = type
         self.img = pygame.image.load(img_path+"brick.png").convert_alpha()
+        self.font = pygame.font.Font( fonts_path+"neodgm.ttf", 30)
     def display(self, screen):
         self.img = pygame.transform.scale(self.img, (self.w, self.h))
         screen.blit(self.img, (self.x, self.y))
+        txt = self.font.render(str(self.hp), True, "red")
+        txt_rect = txt.get_rect()
+        txt_rect.center = (self.x+self.w/2, self.y+self.h/2)
+        screen.blit(txt, txt_rect)
+
     def onBallCollision(self, ball):
         if abs(self.y+self.h/2-ball.y) <= self.h/2+ball.radius and abs(self.x+self.w/2-ball.x) <= self.w/2+ball.radius:
             if abs(self.y+self.h/2-ball.y) >= self.h/2-ball.radius:
@@ -164,14 +167,14 @@ class Ball:
 
     def onBarCollision(self, bar):
         if abs(bar.y - self.y) <= bar.h/2:
-            tmp_v = math.sqrt(self.vy**2 + self.vx**2)
-            if self.x-bar.x == 0:
-                tmp_deg = math.pi/2
-            else:
-                tmp_deg = math.atan((self.y-bar.y)/(self.x-bar.x))
-            print(tmp_deg)
-            self.vx = tmp_v*math.cos(tmp_deg)
-            self.vy = -tmp_v*math.sin(tmp_deg)
+            # tmp_v = math.sqrt(self.vy**2 + self.vx**2)
+            # if self.x-bar.x == 0:
+            #     tmp_deg = math.pi/2
+            # else:
+            #     tmp_deg = math.atan((self.y-bar.y)/(self.x-bar.x))
+            # print(tmp_deg)
+            # self.vx = tmp_v*math.cos(tmp_deg)
+            # self.vy = -tmp_v*math.sin(tmp_deg)
             self.y += self.vy
     
     def onWallCollision(self):
