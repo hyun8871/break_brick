@@ -5,21 +5,32 @@ SCREEN_WIDTH = 600
 SCREEN_HEIGHT = 800
 
 pygame.init()
+
+
+
+
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 pygame.display.set_caption("Collision at boundary")
+
 clock = pygame.time.Clock()
+img_path = "sources/images/"
+fonts_path = "sources/fonts/"
+classes.Brick.img = pygame.image.load(img_path+"brick.png").convert_alpha()
+classes.Brick.font = pygame.font.Font( fonts_path+"neodgm.ttf", 30)
+classes.UnbreakableBrick.img = pygame.image.load(img_path+"brick_unbreakable.png").convert_alpha()
+classes.Ball.img = pygame.image.load(img_path+"ball.png").convert_alpha()
+classes.Exp.img = pygame.image.load(img_path+"orb_exp.png").convert_alpha()
 
 running = True
 screen_type = "main"
 perk_selecting = False
 
-ball = classes.Ball(SCREEN_WIDTH/2, SCREEN_HEIGHT-120, 5)
 bar = classes.Bar(SCREEN_WIDTH/2, SCREEN_HEIGHT-120, 8, 120)
 bricks = []
 stage_manager = classes.StageManager()
+player = classes.Player()
+exp_manager = classes.ExpManager()
 
-
-# 현석아 이거 보임??
 while running:
     clock.tick(60)
 
@@ -28,11 +39,11 @@ while running:
         screen_type = "ingame"
         
     elif screen_type == "ingame":
-        if ball.choice == 0:
-            stage_manager.new_stage()
-            ball.update(bar)
-            stage_manager.bricksCollision(ball)
-            stage_manager.bricksDeathCheck()
+        if player.choice == 0:
+            stage_manager.new_stage(player)
+            player.ballsUpdate(bar, stage_manager)
+            stage_manager.bricksDeathCheck(exp_manager)
+            exp_manager.expsUpdate(bar, player)
 
             for event in pygame.event.get():
                 bar.getmove(event)
@@ -40,13 +51,14 @@ while running:
                     running = False 
                 if event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_SPACE:
-                        ball.release(bar)
+                        player.ballsRelease(bar)
             bar.move()
 
             #display
             screen.fill('white')
             stage_manager.bricksDisplay(screen)
-            ball.display(screen)
+            player.ballsDisplay(screen)
+            exp_manager.expsDisplay(screen)
             bar.display(screen)
             for brick in bricks:
                 brick.display(screen)
