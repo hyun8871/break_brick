@@ -4,7 +4,7 @@ import sys
 import json
 import random
 
-
+#ㅇㅇㅇㅇㅇㅇㅇ
 SCREEN_WIDTH = 600
 SCREEN_HEIGHT = 900
 
@@ -16,6 +16,7 @@ LOWER_BOUNDARY = SCREEN_HEIGHT - 11
 img_path = "sources/images/"
 
 class StageManager:
+    a = 3
     bricks = []
     unbreakable_bricks = []
     stage = 0
