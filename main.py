@@ -2,7 +2,7 @@ import pygame
 import classes
 
 SCREEN_WIDTH = 600
-SCREEN_HEIGHT = 800
+SCREEN_HEIGHT = 850
 
 pygame.init()
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
@@ -11,7 +11,7 @@ running = True
 screen_type = "main"
 perk_selecting = False
 clock = pygame.time.Clock()
-fonts_path = "sources/fonts/"
+fonts_path = "./sources/fonts/"
 
 def neodgm(text, tx, ty, size, color, screen):
     txts = text.split("$n")
@@ -26,8 +26,8 @@ def neodgm(text, tx, ty, size, color, screen):
 
 def game_initiation():
     global bar, bricks, stage_manager, player, exp_manager
-    img_path = "sources/images/"
-    fonts_path = "sources/fonts/"
+    img_path = "./sources/images/"
+    fonts_path = "./sources/fonts/"
     classes.Brick.img = pygame.image.load(img_path+"brick.png").convert_alpha()
     classes.Brick.img = pygame.transform.scale(classes.Brick.img, (classes.Brick.w, classes.Brick.h))
     classes.Brick.font = pygame.font.Font( fonts_path+"neodgm.ttf", 30)
@@ -40,6 +40,7 @@ def game_initiation():
     classes.Item.img["ball_mult"] = pygame.image.load(img_path+"items/ball_mult.png").convert_alpha()
     classes.Item.img["speed_up"] = pygame.image.load(img_path+"items/speed_up.png").convert_alpha()
     classes.Item.img["bomb"] = pygame.image.load(img_path+"items/bomb.png").convert_alpha()
+    classes.Item.img["heart"] = pygame.image.load(img_path+"items/heart.png").convert_alpha()
     classes.Item.img_manage()
     classes.Player.loadImages()
     bar = classes.Bar(SCREEN_WIDTH/2, SCREEN_HEIGHT-120, 8, 120)
@@ -51,13 +52,11 @@ def game_initiation():
 one_tick_ms = 0
 start = 0
 end = 0
-
+pause = False
 
 while running:
-    clock.tick(60)
     start = pygame.time.get_ticks()
-    
-
+    clock.tick(60)
     if screen_type == "main":
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -73,7 +72,7 @@ while running:
          
     elif screen_type == "ingame":
         #event handling
-        if player.choice == 0:
+        if player.choice == 0 and not pause:
             stage_manager.new_stage(player)
             bar.barUpdateLength(player)
             exp_manager.expsUpdate(bar, player)
@@ -82,6 +81,7 @@ while running:
             player.lvUpCheck()
             player.ballsDeathCheck()
             player.buffTimer(one_tick_ms)
+            player.healthTimer(one_tick_ms)
             stage_manager.bricksDeathCheck(exp_manager, player)
             for event in pygame.event.get():
                 bar.getmove(event)
@@ -90,9 +90,19 @@ while running:
                 if event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_SPACE:
                         player.ballsRelease(bar)
+                    if event.key == pygame.K_ESCAPE:
+                        pause = True
             bar.move()
             if player.hp<=0:
                 screen_type = 'dead'
+        elif pause:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    running = False 
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_ESCAPE:
+                        pause = False
+
         else:
             bar.temp_x_move = 0
             for event in pygame.event.get():
@@ -109,9 +119,12 @@ while running:
         exp_manager.expsDisplay(screen)
         player.alarm_text.textDisplay(screen) 
         bar.display(screen)
+        if pause:
+            player.pauseDisplay(screen)
         player.GUIDisplay(screen)
         if player.choice > 0:
             player.perkSelectionDisplay(screen)
+        
         pygame.display.update()
 
     elif screen_type == "dead":
