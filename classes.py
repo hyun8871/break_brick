@@ -21,6 +21,9 @@ class StageManager:
     unbreakable_bricks = []
     stage = 0
     def __init__(self):
+        self.bricks = []
+        self.unbreakable_bricks = []
+        self.damage_indicators = []
         with open('sources/files/maps.json', 'r', encoding='utf-8') as f:
             self.map_list = json.load(f)
     def new_stage(self, player):
@@ -70,8 +73,9 @@ class StageManager:
                     for brick2 in self.bricks:
                         brick2.onBallRadiusCollision(ball, burst_damage, 50)
             brick.onBallCollision(ball)
-    def bricksDisplay(self, screen):
+    def bricksDisplay(self, screen, ms):
         for brick in self.bricks:
+            brick.shakeTick(ms)
             brick.display(screen)
         for brick in self.unbreakable_bricks:
             brick.display(screen)
@@ -84,18 +88,21 @@ class StageManager:
                     cur_val = random.randint(math.ceil(exp_total_val/8), exp_total_val)
                     exp_total_val -= cur_val
                     drop_manager.newRandomExp(brick.x, brick.y, cur_val)
-                itemPerc = int(player.perks_data["itemPerc"]["val1"][player.perks.get("itemPerc", 0)])/100
-                if random.random() <= 0.1+itemPerc:
+                itemPerc = 0.1+int(player.perks_data["itemPerc"]["val1"][player.perks.get("itemPerc", 0)])/100
+                if random.random() <= itemPerc:
                     drop_manager.newRandomItem(brick.x, brick.y)
                 player.score += brick.max_hp*100
                 player.alarm_text.newText("+"+str(brick.max_hp*100), (184, 134, 11), 20, 1000)
                 self.bricks.remove(brick)
+    
+    
 
 class Brick:
     w = 75
     h = 40
     img = 0
     font = 0
+    shakeTimer = 0
     def __init__(self, xi, yi, hp):
         self.xi = xi
         self.yi = yi
@@ -104,23 +111,38 @@ class Brick:
         self.max_hp = hp
         self.hp = hp
     def display(self, screen):
-        screen.blit(self.img, (self.x, self.y))
+        amp = 0
+        amp2 = 0
+        amp = (self.shakeTimer/100)*math.sin((350-self.shakeTimer)/20)
+        amp2 = (self.shakeTimer/100)*math.cos((350-self.shakeTimer)/15)
+        screen.blit(self.img, (amp+self.x, amp2+self.y))
         txt = self.font.render(str(self.hp), True, "white")
         txt_rect = txt.get_rect()
-        txt_rect.center = (self.x+self.w/2, self.y+self.h/2)
+        txt_rect.center = (amp+self.x+self.w/2, amp2+self.y+self.h/2)
         screen.blit(txt, txt_rect)
     def isBallCollision(self, ball):
         return abs(self.y+self.h/2-ball.y) <= self.h/2+ball.radius and abs(self.x+self.w/2-ball.x) <= self.w/2+ball.radius
     def onBallCollision(self, ball, dmg):
         if abs(self.y+self.h/2-ball.y) <= self.h/2+ball.radius and abs(self.x+self.w/2-ball.x) <= self.w/2+ball.radius:
-            if abs(self.y+self.h/2-ball.y) >= self.h/2-ball.radius:
-                self.hp-=dmg
-                ball.vy = -ball.vy
-                ball.y += ball.vy
+            col_d = math.atan2((ball.y-self.y-self.h/2), (ball.x-self.x-self.w/2))
+            side_d = math.atan2(self.h, self.w)
+            if ( col_d <= side_d and col_d >= -side_d ) or ( col_d >= math.pi-side_d ) or ( col_d <= -math.pi+side_d ):
+                col_dis = math.dist((ball.x, ball.y), (self.x+self.w/2, self.y+self.h/2))
+                if ball.collision_dis >= col_dis:
+                    ball.collision_dis = col_dis
+                    ball.collision_type = 1
             else:
-                self.hp-=dmg
-                ball.vx = -ball.vx
-                ball.x += ball.vx
+                col_dis = math.dist((ball.x, ball.y), (self.x+self.w/2, self.y+self.h/2))
+                if ball.collision_dis >= col_dis:
+                    ball.collision_dis = col_dis
+                    ball.collision_type = -1
+            self.hp-=dmg
+            self.shakeTimer = 350
+    def shakeTick(self, ms):
+        if self.shakeTimer > 0:
+            self.shakeTimer -= ms
+        elif self.shakeTimer < 0:
+            self.shakeTimer = 0
     def onBallRadiusCollision(self, ball, dmg, rad):
         if abs(self.y+self.h/2-ball.y) <= self.h/2+ball.radius+rad and abs(self.x+self.w/2-ball.x) <= self.w/2+ball.radius+rad:
             self.hp-=dmg
@@ -130,16 +152,22 @@ class UnbreakableBrick(Brick):
     def __init__(self, xi, yi, hp):
         super().__init__(xi, yi, hp)
     def display(self, screen):
-        #self.img = pygame.transform.scale(self.img, (self.w, self.h))
         screen.blit(self.img, (self.x, self.y))
     def onBallCollision(self, ball):
         if abs(self.y+self.h/2-ball.y) <= self.h/2+ball.radius and abs(self.x+self.w/2-ball.x) <= self.w/2+ball.radius:
-            if abs(self.y+self.h/2-ball.y) >= self.h/2-ball.radius:
-                ball.vy = -ball.vy
-                ball.y += 2.5*ball.vy
+            col_d = math.atan2((ball.y-self.y-self.h/2), (ball.x-self.x-self.w/2))
+            side_d = math.atan2(self.h, self.w)
+            if ( col_d <= side_d and col_d >= -side_d ) or ( col_d >= math.pi-side_d ) or ( col_d <= -math.pi+side_d ):
+                col_dis = math.dist((ball.x, ball.y), (self.x+self.w/2, self.y+self.h/2))
+                if ball.collision_dis >= col_dis:
+                    ball.collision_dis = col_dis
+                    ball.collision_type = 1
             else:
-                ball.vx = -ball.vx
-                ball.x += 2.5*ball.vx
+                col_dis = math.dist((ball.x, ball.y), (self.x+self.w/2, self.y+self.h/2))
+                if ball.collision_dis >= col_dis:
+                    ball.collision_dis = col_dis
+                    ball.collision_type = -1
+            
 
 class Boundary:
     def __init__(self, w, h):# w, h 옆 두께, 위 두께(아마 비슷할듯)
@@ -158,6 +186,7 @@ class AlarmTextManager:
     def __init__(self, x, y):
         self.x = x
         self.y = y
+        self.texts = []
     def newText(self, text, color, size, dur,):
         self.texts.insert(0, [text, color, size, dur, dur])
     def textDisplay(self, screen):
@@ -173,10 +202,9 @@ class AlarmTextManager:
             screen.blit(txt, txt_rect)
             cur_y -= 1.2*size*mult
             mult *= 0.7
-    def textTimeTick(self):
-        tick = 1000/60
+    def textTimeTick(self, ms):
         for t in self.texts:
-            t[3] -= tick
+            t[3] -= ms
             if t[3] <= 0:
                 self.texts.remove(t)
     
@@ -190,13 +218,14 @@ class Player:
     font = 0
     max_exp = [0]
     perks = {}
+    perk_images = {}
     buffs = {}
     balls = []
     random_perk_choice = []
     perk_selection = 0
     gui_img = 0
     roman = [0, 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X']
-    alarm_text = AlarmTextManager(SCREEN_WIDTH/2, SCREEN_HEIGHT-200)
+    alarm_text = 0
     with open('sources/files/perks.json', 'r', encoding='utf-8') as f:
         perks_data = json.load(f)
     available_perks = list(perks_data.keys())
@@ -207,16 +236,26 @@ class Player:
     
     max_lv = 30
     choice = 0
+    def loadImages():
+        for perk in Player.perks_data:
+            Player.perk_images[perk] = pygame.image.load(img_path+"perk_icons/"+perk+".png").convert_alpha()
+            Player.perk_images[perk] = pygame.transform.scale(Player.perk_images[perk], (100, 100))
     def __init__(self):
         self.lv = 1
         self.exp = 0
         self.dmg = 1
-        self.ball_v = 8
+        self.ball_v = 6
         self.hp = 100
         self.max_hp = 100
+        self.max_exp = [0]
+        self.perks = {}
+        self.buffs = {}
+        self.balls = []
+        self.p_stage = 0
+        self.score = 0
+        self.alarm_text = AlarmTextManager(SCREEN_WIDTH/2, SCREEN_HEIGHT-200)
         for i in range(1, 51):
             self.max_exp.append(math.floor(10+1.2**i*2.5))
-        print(self.max_exp)
         self.balls.append(Ball(SCREEN_WIDTH/2, SCREEN_HEIGHT-120, 8, self.ball_v, 0, True))
     def newStage(self, stage):
         self.balls = []
@@ -226,6 +265,32 @@ class Player:
         if stage != 1: self.alarm_text.newText("Stage Clear! +"+str(stage*1000), (184, 134, 11), 30, 2000)
         for _ in range(1+startBall):
             self.balls.append(Ball(SCREEN_WIDTH/2, SCREEN_HEIGHT-120, 8, self.ball_v, 0, True))
+
+    def gamestart(self, screen): # 아무 키나 누르면 시작
+        font = pygame.font.Font(None, 70)
+        text = font.render("Press Any Key to Start", True, 'WHITE')
+        text_rect = text.get_rect(center=(270, 270))
+        screen.fill('BLACK')
+        screen.blit(text, text_rect)
+        pygame.display.flip()
+        waiting = True
+        while waiting:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    sys.exit()
+                if event.type == pygame.KEYDOWN:
+                    waiting = False
+    
+    def gameoverDisplay(self, screen, player):
+        screen.fill('black')
+        self.neodgm(f"게임 오버", SCREEN_WIDTH/2, 270, 50, "white", screen)
+        self.neodgm(f"점수 : {player.score}", SCREEN_WIDTH/2, 350, 30, "white", screen)
+        self.neodgm(f"Space Bar를 눌러 처음부터 시작합니다", SCREEN_WIDTH/2, SCREEN_HEIGHT-100, 25, "white", screen)
+        pygame.display.flip()
+        
+        
+    
     def ballsUpdate(self, bar, stage_manager):
         for ball in self.balls:
             ball.update(bar)
@@ -236,6 +301,8 @@ class Player:
                 if random.random() <= moreBall:
                     self.balls.append(Ball(bar.x, bar.y-10, 8, self.ball_v, degree, False))
             stage_manager.bricksCollision(ball, self)
+        for ball in self.balls:
+            ball.collisionHandling()
     def ballsRelease(self, bar):
         for ball in self.balls:
             ball.release(bar)
@@ -310,13 +377,16 @@ class Player:
             if self.perk_selection == i: 
                 pygame.draw.rect(screen, "white", [x_coord[i]-60, SCREEN_HEIGHT/2-100, 120, 120], 2)
             cur_lv = self.perks.get(self.random_perk_choice[i], 0)+1
-            self.neodgm(self.perks_data[self.random_perk_choice[i]]["name"]+" "+self.roman[cur_lv], x_coord[i], SCREEN_HEIGHT/2-120, 18, "white", screen)
+            self.neodgm(self.perks_data[self.random_perk_choice[i]]["name"]+" "+self.roman[cur_lv], x_coord[i], SCREEN_HEIGHT/2-120, 18, "white", screen) 
+            img_rect = Player.perk_images[self.random_perk_choice[i]].get_rect()
+            img_rect.center = (x_coord[i], SCREEN_HEIGHT/2-40)
+            screen.blit(Player.perk_images[self.random_perk_choice[i]], img_rect)
             self.neodgm(self.perkDesc(self.random_perk_choice[i], cur_lv), x_coord[i], SCREEN_HEIGHT/2+50, 15, "white", screen )
         self.neodgm('좌우 방향키로 특성 선택$n스페이스바로 특성 확정', SCREEN_WIDTH/2, SCREEN_HEIGHT-180, 20, "white", screen)
     def GUIDisplay(self, screen):
         pygame.draw.rect(screen, (20, 20, 20), (0, 0, SCREEN_WIDTH, 120))
         self.neodgm("STAGE "+str(self.p_stage), SCREEN_WIDTH/2, 24, 24, "white", screen)
-        self.neodgm("LV : "+str(self.lv), SCREEN_WIDTH/2, 50, 14, "white", screen)
+        self.neodgm("LEVEL : "+str(self.lv), SCREEN_WIDTH/2, 50, 14, "white", screen)
         self.neodgm("EXP : "+str(self.exp)+" / "+str(self.max_exp[self.lv]), SCREEN_WIDTH/2, 68, 14, "white", screen)
         self.neodgm("SCORE : "+str(self.score), SCREEN_WIDTH/2, 86, 14, "white", screen)
         self.neodgm("HP : "+str(int(self.hp))+" / "+str(int(self.max_hp)), SCREEN_WIDTH/2, 104, 14, "white", screen)
@@ -324,10 +394,10 @@ class Player:
     def damageCalc(self):
         dmgAdd = int(self.perks_data["dmgAdd"]["val1"][self.perks.get("dmgAdd", 0)])
         dmgMult = int(self.perks_data["dmgMult"]["val1"][self.perks.get("dmgMult", 0)])
-        return math.floor(float(dmgAdd+1)*float(100+dmgMult)/100)
-    def barLength(self, bar):
-        barSize = int(self.perks_data["barSize"]["val1"][self.perks.get("barSize", 0)])
-        bar.l = 120*(100+barSize)/100
+        cur_dmg = math.floor(float(dmgAdd+1)*float(100+dmgMult)/100)
+        if "damage_mult" in self.buffs:
+            cur_dmg *= 2
+        return cur_dmg
     def onCollisionItem(self, typ):
         if typ == "bomb":
             self.hp -= 15
@@ -337,15 +407,20 @@ class Player:
             self.alarm_text.newText("아이템 획득! 5초간 공격력 2배", (0, 0, 0), 25, 2500)
         if typ == "bar_up":
             self.buffs["bar_up"] = 8000
-            self.alarm_text.newText("아이템 획득! 8초간 바 길이 2배", (0, 0, 0), 25, 2500)
-        if typ == "speed_up":
-            self.buffs["speed_up"] = 5000
-            self.alarm_text.newText("아이템 획득! 5초간 속도 1.5배", (0, 0, 0), 25, 2500)
+            self.alarm_text.newText("아이템 획득! 8초간 바 길이 1.5배", (0, 0, 0), 25, 2500)
         if typ == "ball_mult":
             num = len(self.balls)
             for i in range(num):
                 self.balls.append(Ball(self.balls[i].x, self.balls[i].y, 8, self.ball_v, random.random()*math.pi, False))
             self.alarm_text.newText("아이템 획득! 공 갯수 두배", (0, 0, 0), 25, 2500)
+    def buffTimer(self, ms):
+        keyss = list(self.buffs.keys())
+        for buff in keyss:
+            self.buffs[buff] -= ms
+            if self.buffs[buff] <= 0:
+                self.buffs.pop(buff)
+                
+
     
 
 
@@ -353,9 +428,9 @@ class Player:
 
 class DropManager:
     drops = []
-    typs = ["bomb", "ball_mult", "bar_up", "damage_mult", "speed_up"]
+    typs = ["bomb", "ball_mult", "bar_up", "damage_mult"]
     def __init__(self):
-        pass
+        self.drops = []
     def newRandomExp(self, x, y, val):
         degree = 3/2*math.pi + (random.random()*2-1)*(1/12)*math.pi
         self.drops.append(Exp(x, y, 4*math.cos(degree), 4*math.sin(degree), val, 3))
@@ -421,7 +496,7 @@ class Exp(DropItem):
 
 class Item(DropItem):
     img = {}
-    typs = ["bomb", "ball_mult", "bar_up", "damage_mult", "speed_up"]
+    typs = ["bomb", "ball_mult", "bar_up", "damage_mult"]
     def __init__(self, x, y, vx, vy, size, lb, typ):
         super().__init__(x, y, vx, vy, size, lb)
         self.typ = typ
@@ -437,6 +512,8 @@ class Item(DropItem):
 
 class Ball:
     img = 0
+    collision_type = 0
+    collision_dis = 1000
     def __init__(self, x, y, radius, v, degree, on_bar):
         self.x = x
         self.y = y
@@ -445,13 +522,24 @@ class Ball:
         self.vy = v*math.sin(degree)
         self.radius = radius
         self.on_bar = on_bar
+        self.collision_dis = 1000
         
     def display(self, screen):
         self.img = pygame.transform.scale(self.img, (self.radius*2, self.radius*2))
         img_rect = self.img.get_rect()
         img_rect.center = (self.x, self.y)
         screen.blit(self.img, img_rect)
-
+    def collisionHandling(self):
+        if self.collision_type == 1:
+            self.vx *= -1
+            self.x += 1.5*self.vx
+            self.collision_type = 0
+            self.collision_dis = 1000
+        elif self.collision_type == -1:
+            self.vy *= -1
+            self.y += 1.5*self.vy
+            self.collision_type = 0
+            self.collision_dis = 1000
     def freeMove(self):
         self.x+=self.vx
         self.y+=self.vy      
@@ -486,7 +574,6 @@ class Ball:
             self.onWallCollision()
             self.onBarCollision(bar)
             self.freeMove() 
-
     def release(self, bar):
         if self.on_bar:
             self.on_bar = False
@@ -526,32 +613,12 @@ class Bar:
             self.x += self.vx
         elif self.temp_x_move == -1 and self.l/2<self.x - self.vx<SCREEN_WIDTH-self.l/2:
             self.x -= self.vx
+    def barUpdateLength(self, player):
+        barSize = int(player.perks_data["barSize"]["val1"][player.perks.get("barSize", 0)])
+        self.l = 120*(100+barSize)/100
+        if "bar_up" in player.buffs:
+            self.l *= 1.5
+        
 
-def gamestart(screen): # 아무 키나 누르면 시작
-    font = pygame.font.Font(None, 70)
-    text = font.render("Press Any Key to Start", True, 'WHITE')
-    text_rect = text.get_rect(center=(270, 270))
-    screen.fill('BLACK')
-    screen.blit(text, text_rect)
-    pygame.display.flip()
-    
-    waiting = True
-    while waiting:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit()
-                sys.exit()
-            if event.type == pygame.KEYDOWN:
-                waiting = False
-
-
-
-def gameover(screen, score):
-    font = pygame.font.Font(None, 50)
-    text = font.render(f"Game Over. \n Your score is {score}", True, WHITE)
-    text_rect = text.get_rect(center=(270, 270))
-    screen.blit(text, text_rect)
-    pygame.display.flip()
-    pygame.time.wait(3000)  # 3초 대기
         
     

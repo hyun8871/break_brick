@@ -51,5 +51,26 @@
         {
             "from_x": 1, "to_x": 6, "from_y": 2, "to_y": 5, "hp": 1
         }
+    ], 
+
+    "type4": [
+        {
+            "from_x": 1, "to_x": 6, "y": 1, "hp": 1
+        },
+        {
+            "from_x": 2, "to_x": 5, "y": 3, "unbreakable": 1
+        },
+        {
+            "from_x": 1, "to_x": 6, "y": 5, "hp": 1
+        },
+        {
+            "from_x": 1, "to_x": 2, "y": 7, "unbreakable": 1
+        },
+        {
+            "from_x": 5, "to_x": 6, "y": 7, "unbreakable": 1
+        },
+        {
+            "from_x": 3, "to_x": 4, "y": 9, "hp": 1
+        }
     ]
 }
