@@ -3,7 +3,8 @@ import math
 import sys
 import json
 import random
-import time
+import os
+from queue import PriorityQueue
 
 SCREEN_WIDTH = 600
 SCREEN_HEIGHT = 850
@@ -13,24 +14,181 @@ RIGHT_BOUNDARY = SCREEN_WIDTH - 11
 UPPER_BOUNDARY = 170
 LOWER_BOUNDARY = SCREEN_HEIGHT + 10
 
-img_path = "./sources/images/"
-fonts_path = "./sources/fonts/"
+img_path = __file__+"\\..\\sources\\images\\"
+fonts_path = __file__+"\\..\\sources\\fonts\\"
+
+class CollisionData:
+    def __init__(self, time, ball, line):
+        self.time = time
+        self.ball = ball
+        self.line = line
+    def __lt__(self, other):
+        return self.time < other.time
+
+class Line:
+    def __init__(self, parent, x1, y1, x2, y2):
+        self.parent = parent
+        if y1 == y2:
+            self.type = 1
+            self.range = (min(x1,x2),max(x1,x2))
+            self.k = y1
+        else:
+            self.type = 2
+            self.range = (min(y1,y2),max(y1,y2))
+            self.k = x1
+    
+    def collisionTime(self, ball):
+        if self.type == 1:
+            coll_time = (self.k - ball.y) / ball.vy
+            #print(self.type, self.range, coll_time)
+            #print(ball.x+coll_time*ball.vx, self.range)
+            if not self.isinrange(ball.x+coll_time*ball.vx, self.range):
+                return None
+        else:
+            coll_time = (self.k - ball.x) / ball.vx
+            #print(self.type, self.range, coll_time)
+            #print(ball.y+coll_time*ball.vy, self.range)
+            if not self.isinrange(ball.y+coll_time*ball.vy, self.range):
+                return None
+        if not self.isinrange(coll_time, (0, 1-ball.cur_tick)):
+            return None
+        return ball.cur_tick+coll_time
+    def isinrange(self, x, range):
+        return range[0] <= x and x <= range[1]
+
+class CollisionManager:
+    brick_w = 75
+    brick_h = 40
+    brick_broken = []
+    def __init__(self):
+        self.collisions = PriorityQueue()
+        self.brick_w = 75
+        self.brick_h = 40
+        self.brick_broken = []
+    def newCollision(self, ball, line):
+        col_time = line.collisionTime(ball)
+        if col_time:
+            self.collisions.put(CollisionData(col_time, ball, line))
+
+    def updateCollision(self, balls, bricks, player):
+        self.brick_broken = []
+        self.nextTickCollision(balls, bricks)
+        self.collisionHandling(balls, bricks, player)
+    
+    def ballCollision(self, ball, bricks):
+        
+        sx = ball.x
+        ex = ball.x+ball.vx
+        sy = ball.y
+        ey = ball.y+ball.vy
+        x1 = min(max(0, math.floor(min(sx, ex)/self.brick_w)-1), 7)
+        x2 = min(max(0, math.ceil(max(sx, ex)/self.brick_w)+1), 7)
+        y1 = min(max(0, math.floor((min(sy, ey)-UPPER_BOUNDARY)/self.brick_h)-1), 11)
+        y2 = min(max(0, math.ceil((max(sy, ey)-UPPER_BOUNDARY)/self.brick_h)+1), 11)
+        x_range = (x1, x2)
+        y_range = (y1, y2)
+        minimum_tick = 1
+        minimum_tick_line = 0
+        for yy in range(y_range[0], y_range[1]+1):
+            for xx in range(x_range[0], x_range[1]+1):
+                if isinstance(bricks[yy][xx], Brick):
+                    for line in bricks[yy][xx].lines:
+                        col_time = line.collisionTime(ball)
+                        if col_time != None and col_time <= minimum_tick and ( not bricks[yy][xx] in self.brick_broken ):
+                            #print(col_time)
+                            minimum_tick = col_time
+                            minimum_tick_line = line
+        if minimum_tick < 1:
+            self.collisions.put(CollisionData(minimum_tick, ball, minimum_tick_line))
+    def nextTickCollision(self, balls, bricks):
+        for ball in balls:
+            if not ball.on_bar:
+                self.ballCollision(ball, bricks)
+    def collisionHandling(self, balls, bricks, player):
+        for ball in balls:
+            if not ball.on_bar:
+                ball.cur_tick = 0
+        while not self.collisions.empty():
+            cur_collision = self.collisions.get()
+            col_tick = cur_collision.time
+            cur_ball = cur_collision.ball
+            cur_line = cur_collision.line
+            cur_brick = cur_line.parent
+            #print(col_tick, cur_brick.x, cur_brick.y)
+            if cur_brick not in self.brick_broken:
+                if cur_line.type == 1:
+                    cur_ball.y = cur_line.k
+                    cur_ball.x += (col_tick-cur_ball.cur_tick)*cur_ball.vx
+                    cur_ball.vy *= -1
+                    cur_ball.y += 0.1*cur_ball.vy
+                else:
+                    cur_ball.x = cur_line.k
+                    cur_ball.y += (col_tick-cur_ball.cur_tick)*cur_ball.vy
+                    cur_ball.vx *= -1
+                    cur_ball.x += 0.1*cur_ball.vx
+                ball.cur_tick = col_tick
+                damage = player.damageCalc()
+                
+                crit = int(player.perks_data["critical"]["val1"][player.perks.get("critical", 0)])/100
+                if random.random() <= crit:
+                    damage *= 2
+                    cur_brick.onBrickDamage(damage, 700)
+                else:
+                    cur_brick.onBrickDamage(damage, 350)
+                if cur_brick.hp <= 0:
+                    self.brick_broken.append(cur_brick)
+                burst = int(player.perks_data["burst"]["val1"][player.perks.get("burst", 0)])/100
+                burst_damage = int(damage*burst)
+                if burst_damage > 0:
+                    cur_brick.xi
+                    for i, j in ((1,0), (-1,0), (0,1), (0,-1)):
+                        if cur_brick.xi+i >= 0 and cur_brick.xi+i <= 7 and cur_brick.yi+j >= 0 and cur_brick.yi+j <= 11:
+                            if isinstance(bricks[cur_brick.yi+j][cur_brick.xi+i], Brick):
+                                bricks[cur_brick.yi+j][cur_brick.xi+i].onBrickDamage(burst_damage, 150)
+                                if bricks[cur_brick.yi+j][cur_brick.xi+i].hp <= 0:
+                                    self.brick_broken.append(bricks[cur_brick.yi+j][cur_brick.xi+i])
+                
+                self.ballCollision(cur_ball, bricks)
+        for ball in balls:
+            if not ball.on_bar:
+                left_tick = 1-ball.cur_tick
+                ball.x += ball.vx*left_tick
+                ball.y += ball.vy*left_tick
+            ball.cur_tick = 0
+                
+                
+
+
 
 class StageManager:
-    bricks = []
-    unbreakable_bricks = []
+    bricks = [[0 for _ in range(8)] for _ in range(12)]
+    bricks_coords = []
+    unbreakable_bricks = [[0 for _ in range(8)] for _ in range(12)]
+    unbreakable_bricks_coords = []
     stage = 0
+    max_xi = 8
+    max_yi = 12
+    w = 75
+    h = 40
     def __init__(self):
-        self.bricks = []
-        self.unbreakable_bricks = []
-        self.damage_indicators = []
-        with open('./sources/files/maps.json', 'r', encoding='utf-8') as f:
+        self.max_xi = 8
+        self.max_yi = 12
+        self.w = 75
+        self.h = 40
+        self.bricks = [[0 for _ in range(self.max_xi)] for _ in range(self.max_yi)]
+        self.bricks_coords = []
+        self.unbreakable_bricks = [[0 for _ in range(self.max_xi)] for _ in range(self.max_yi)]
+        self.unbreakable_bricks_coords = []
+        with open(__file__+'\\..\\sources\\files\\maps.json', 'r', encoding='utf-8') as f:
             self.map_list = json.load(f)
     def new_stage(self, player):
-        if len(self.bricks) == 0:
+        if len(self.bricks_coords) == 0:
             self.stage += 1
             player.newStage(self.stage)
-            self.unbreakable_bricks = []
+            self.bricks = [[0 for _ in range(self.max_xi)] for _ in range(self.max_yi)]
+            self.bricks_coords = []
+            self.unbreakable_bricks = [[0 for _ in range(self.max_xi)] for _ in range(self.max_yi)]
+            self.unbreakable_bricks_coords = []
             map_type = random.choice(list(self.map_list.keys()))
             for brick in self.map_list[map_type]:
                 sx, sy, ex, ey = 0, 0, 0, 0
@@ -52,59 +210,38 @@ class StageManager:
                 for y in range(sy, ey+1):
                     for x in range(sx, ex+1):
                         if ub: 
-                            self.unbreakable_bricks.append(UnbreakableBrick(x, y, 0))
+                            self.bricks[y][x] = UnbreakableBrick(x, y, hp)
+                            self.unbreakable_bricks_coords.append((x, y))
                         else: 
-                            self.bricks.append(Brick(x, y, hp))
-    def bricksCollision(self, ball, player):
-        damage = player.damageCalc()
-        for brick in self.bricks:
-            if brick.isBallCollision(ball):
-                burst = int(player.perks_data["burst"]["val1"][player.perks.get("burst", 0)])/100
-                burst_damage = int(damage*burst)
-                if burst_damage > 0:
-                    for brick2 in self.bricks:
-                        brick2.onBallRadiusCollision(ball, burst_damage, 50)
-            brick.onBallCollision(ball, damage)
-        for brick in self.unbreakable_bricks:
-            if brick.isBallCollision(ball):
-                burst = int(player.perks_data["burst"]["val1"][player.perks.get("burst", 0)])/100
-                burst_damage = int(damage*burst)
-                if burst_damage > 0:
-                    for brick2 in self.bricks:
-                        brick2.onBallRadiusCollision(ball, burst_damage, 50)
-            brick.onBallCollision(ball)
-    def isBrickCollision(self, ball):
-        ball.collided = False
-        for brick in self.bricks:
-            if ball.vx*(self.x+self.w/2-ball.x)+ball.vy*(self.y+self.h/2-ball.y) >= 0 and abs(brick.y+brick.h/2-ball.y) <= brick.h/2+ball.radius and abs(brick.x+brick.w/2-ball.x) <= brick.w/2+ball.radius:
-                ball.collided = True
-        for brick in self.unbreakable_bricks:
-            if ball.vx*(self.x+self.w/2-ball.x)+ball.vy*(self.y+self.h/2-ball.y) >= 0 and abs(brick.y+brick.h/2-ball.y) <= brick.h/2+ball.radius and abs(brick.x+brick.w/2-ball.x) <= brick.w/2+ball.radius:
-                ball.collided = True
+                            self.bricks[y][x] = Brick(x, y, hp)
+                            self.bricks_coords.append((x, y))
     def bricksDisplay(self, screen, ms):
-        for brick in self.bricks:
-            brick.shakeTick(ms)
-            brick.display(screen)
-        for brick in self.unbreakable_bricks:
-            brick.shakeTick(ms)
-            brick.display(screen)
+        for coord in self.bricks_coords:
+            cur_brick = self.bricks[coord[1]][coord[0]]
+            cur_brick.shakeTick(ms)
+            cur_brick.display(screen)
+        for coord in self.unbreakable_bricks_coords:
+            cur_brick = self.bricks[coord[1]][coord[0]]
+            cur_brick.shakeTick(ms)
+            cur_brick.display(screen)
+    
     def bricksDeathCheck(self, drop_manager, player):
-        for brick in self.bricks:
-            if brick.hp <= 0:
+        for coord in self.bricks_coords:
+            cur_brick = self.bricks[coord[1]][coord[0]]
+            if cur_brick.hp <= 0:
                 expPerc = int(player.perks_data["expPerc"]["val1"][player.perks.get("expPerc", 0)])/100
-                exp_total_val = math.floor(math.sqrt(brick.max_hp)*(1+random.random())*(1+expPerc))
+                exp_total_val = math.floor(math.sqrt(cur_brick.max_hp)*(1+random.random())*(1+expPerc))
                 while exp_total_val > 0:
                     cur_val = random.randint(math.ceil(exp_total_val/8), exp_total_val)
                     exp_total_val -= cur_val
-                    drop_manager.newRandomExp(brick.x, brick.y, cur_val)
+                    drop_manager.newRandomExp(cur_brick.x+cur_brick.w/2, cur_brick.y+cur_brick.h/2, cur_val)
                 itemPerc = 0.15+int(player.perks_data["itemPerc"]["val1"][player.perks.get("itemPerc", 0)])/100
                 if random.random() <= itemPerc:
-                    drop_manager.newRandomItem(brick.x, brick.y)
-                player.score += brick.max_hp*100
-                player.alarm_text.newText("+"+str(brick.max_hp*100), (184, 134, 11), 25, 1000)
-                self.bricks.remove(brick)
-    
-    
+                    drop_manager.newRandomItem(cur_brick.x+cur_brick.w/2, cur_brick.y+cur_brick.h/2)
+                player.score += cur_brick.max_hp*100
+                player.alarm_text.newText("+"+str(cur_brick.max_hp*100), (184, 134, 11), 25, 1000)
+                self.bricks[coord[1]][coord[0]] = 0
+                self.bricks_coords.remove(coord)
 
 class Brick:
     w = 75
@@ -112,6 +249,7 @@ class Brick:
     img = 0
     font = 0
     shakeTimer = 0
+    lines = []
     def __init__(self, xi, yi, hp):
         self.xi = xi
         self.yi = yi
@@ -122,43 +260,34 @@ class Brick:
         self.max_hp = hp
         self.hp = hp
         self.shakeTimer = 0
+        self.lines = []
+        
+        self.lines.append(Line(self, self.x-8, self.y-8, self.x-8, self.y+self.h+8))
+        self.lines.append(Line(self, self.x+self.w+8, self.y-8, self.x+self.w+8, self.y+self.h+8))
+        self.lines.append(Line(self, self.x-8, self.y-8, self.x+self.w+8, self.y-8))
+        self.lines.append(Line(self, self.x-8, self.y+self.h+8, self.x+self.w+8, self.y+self.h+8))
     def display(self, screen):
         amp = 0
         amp2 = 0
         amp = (self.shakeTimer/100)*math.sin((self.shakeTimer)/20)
         amp2 = (self.shakeTimer/100)*math.cos((self.shakeTimer)/15)
         screen.blit(self.img, (amp+self.x, amp2+self.y))
-        txt = self.font.render(str(self.hp), True, "white")
-        txt_rect = txt.get_rect()
-        txt_rect.center = (amp+self.x+self.w/2, amp2+self.y+self.h/2)
-        screen.blit(txt, txt_rect)
-    def isBallCollision(self, ball):
-        return ball.vx*(self.x+self.w/2-ball.x)+ball.vy*(self.y+self.h/2-ball.y) >= 0 and abs(self.y+self.h/2-ball.y) <= self.h/2+ball.radius and abs(self.x+self.w/2-ball.x) <= self.w/2+ball.radius
-    def onBallCollision(self, ball, dmg):
-        if ball.vx*(self.x+self.w/2-ball.x)+ball.vy*(self.y+self.h/2-ball.y) >= 0 and abs(self.y+self.h/2-ball.y) <= self.h/2+ball.radius and abs(self.x+self.w/2-ball.x) <= self.w/2+ball.radius:
-            col_d = math.atan2((ball.y-self.y-self.h/2), (ball.x-self.x-self.w/2))
-            side_d = math.atan2(self.h, self.w)
-            if ( col_d <= side_d and col_d >= -side_d ) or ( col_d >= math.pi-side_d ) or ( col_d <= -math.pi+side_d ):
-                col_dis = math.dist((ball.x, ball.y), (self.x+self.w/2, self.y+self.h/2))
-                if ball.collision_dis >= col_dis:
-                    ball.collision_dis = col_dis
-                    ball.collision_type = 1
-            else:
-                col_dis = math.dist((ball.x, ball.y), (self.x+self.w/2, self.y+self.h/2))
-                if ball.collision_dis >= col_dis:
-                    ball.collision_dis = col_dis
-                    ball.collision_type = -1
-            self.hp-=dmg
-            self.shakeTimer = 350
+        if self.hp >= 1:
+            txt = self.font.render(str(self.hp), True, "white")
+            txt_rect = txt.get_rect()
+            txt_rect.center = (amp+self.x+self.w/2, amp2+self.y+self.h/2)
+            screen.blit(txt, txt_rect)
+    def onBrickDamage(self, dmg, shake):
+        if self.hp > 0:
+            self.shakeTimer = shake
+        self.hp-=dmg
+        if self.hp <= 0:
+            self.hp = 0
     def shakeTick(self, ms):
         if self.shakeTimer > 0:
             self.shakeTimer -= ms
         elif self.shakeTimer < 0:
             self.shakeTimer = 0
-    def onBallRadiusCollision(self, ball, dmg, rad):
-        if abs(self.y+self.h/2-ball.y) <= self.h/2+ball.radius+rad and abs(self.x+self.w/2-ball.x) <= self.w/2+ball.radius+rad:
-            self.hp-=dmg
-            self.shakeTimer = 150
 
 class UnbreakableBrick(Brick):
     w = 75
@@ -167,27 +296,15 @@ class UnbreakableBrick(Brick):
     shakeTimer = 0
     def __init__(self, xi, yi, hp):
         super().__init__(xi, yi, hp)
+        self.hp = 999999999
     def display(self, screen):
         amp = 0
         amp2 = 0
         amp = (self.shakeTimer/100)*math.sin((self.shakeTimer)/20)
         amp2 = (self.shakeTimer/100)*math.cos((self.shakeTimer)/15)
         screen.blit(self.img, (amp+self.x, amp2+self.y))
-    def onBallCollision(self, ball):
-        if ball.vx*(self.x+self.w/2-ball.x)+ball.vy*(self.y+self.h/2-ball.y) >= 0 and abs(self.y+self.h/2-ball.y) <= self.h/2+ball.radius and abs(self.x+self.w/2-ball.x) <= self.w/2+ball.radius:
-            col_d = math.atan2((ball.y-self.y-self.h/2), (ball.x-self.x-self.w/2))
-            side_d = math.atan2(self.h, self.w)
-            if ( col_d <= side_d and col_d >= -side_d ) or ( col_d >= math.pi-side_d ) or ( col_d <= -math.pi+side_d ):
-                col_dis = math.dist((ball.x, ball.y), (self.x+self.w/2, self.y+self.h/2))
-                if ball.collision_dis >= col_dis:
-                    ball.collision_dis = col_dis
-                    ball.collision_type = 1
-            else:
-                col_dis = math.dist((ball.x, ball.y), (self.x+self.w/2, self.y+self.h/2))
-                if ball.collision_dis >= col_dis:
-                    ball.collision_dis = col_dis
-                    ball.collision_type = -1
-            self.shakeTimer = 300
+    def onBallCollision(self, dmg):
+        self.shakeTimer = 300
             
 
 class Boundary:
@@ -204,10 +321,15 @@ class Boundary:
 
 class AlarmTextManager:
     texts = []
+    fonts = [0]
     def __init__(self, x, y):
         self.x = x
         self.y = y
         self.texts = []
+        self.fonts = [0]
+        for i in range(1, 50):
+            self.fonts.append(pygame.font.Font( fonts_path+"neodgm.ttf", i)) 
+            
     def newText(self, text, color, size, dur):
         self.texts.insert(0, [text, color, size, dur, dur, self.y, size])
     def textDisplay(self, screen):
@@ -218,7 +340,7 @@ class AlarmTextManager:
             left_ratio = min(1, dur*1.6/max_dur)
             color = tuple( map(lambda x: int(x*(left_ratio)+255*(1-left_ratio)), color) )
             self.texts[index][2] = min(self.texts[index][2], math.floor(max_size*mult))
-            txt_font = pygame.font.Font( fonts_path+"neodgm.ttf", self.texts[index][2])
+            txt_font = self.fonts[ self.texts[index][2] ]
             txt = txt_font.render(txt, True, color)
             txt_rect = txt.get_rect()
             cur_y -= 1.4*self.texts[index][2]*mult
@@ -252,7 +374,9 @@ class Player:
     gui_img = 0
     roman = [0, 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X']
     alarm_text = 0
-    with open('./sources/files/perks.json', 'r', encoding='utf-8') as f:
+    left_reroll = 2
+    fonts = [0]
+    with open(__file__+'\\..\\sources\\files\\perks.json', 'r', encoding='utf-8') as f:
         perks_data = json.load(f)
     available_perks = list(perks_data.keys())
     for perk in perks_data.keys():
@@ -270,7 +394,7 @@ class Player:
         self.lv = 1
         self.exp = 0
         self.dmg = 1
-        self.ball_v = 6
+        self.ball_v = 7
         self.hp = 100
         self.max_hp = 100
         self.health_timer = 2000
@@ -279,11 +403,16 @@ class Player:
         self.buffs = {}
         self.balls = []
         self.p_stage = 0
+        self.left_reroll = 2
         self.score = 0
         self.alarm_text = AlarmTextManager(SCREEN_WIDTH/2, SCREEN_HEIGHT-160)
+        self.collision_manager = CollisionManager()
         for i in range(1, 51):
             self.max_exp.append(math.floor(4+i*2+1.2**(i-1)*2.5))
         print(self.max_exp)
+        self.fonts = [0]
+        for i in range(1, 301):
+            self.fonts.append(pygame.font.Font( fonts_path+"neodgm.ttf", i)) 
         self.balls.append(Ball(SCREEN_WIDTH/2, SCREEN_HEIGHT-120, 8, self.ball_v, 0, True))
     def newStage(self, stage):
         self.balls = []
@@ -313,10 +442,22 @@ class Player:
                 if event.type == pygame.KEYDOWN:
                     waiting = False
     
-    def gameoverDisplay(self, screen, player):
+    def gameoverDisplay(self, screen, player, best_scores):
         screen.fill('black')
         self.neodgm(f"GAME OVER", SCREEN_WIDTH/2, 270, 50, "white", screen)
         self.neodgm(f"SCORE : {player.score}", SCREEN_WIDTH/2, 350, 30, "white", screen)
+        self.neodgm("Best Scores", SCREEN_WIDTH/2, 420, 25, "white", screen)
+        index = 1
+        
+        for scor in best_scores:
+            if scor == self.score:
+                self.neodgm(str(index)+". "+str(scor), SCREEN_WIDTH/2, 450+20*(index-1), 18, "yellow", screen)
+            else:
+                self.neodgm(str(index)+". "+str(scor), SCREEN_WIDTH/2, 450+20*(index-1), 16, "white", screen)
+            if index >= 10:
+                break
+            index+=1
+        
         self.neodgm(f"Space Bar를 눌러 처음부터 시작합니다", SCREEN_WIDTH/2, SCREEN_HEIGHT-100, 25, "white", screen)
         pygame.display.flip()
 
@@ -326,23 +467,17 @@ class Player:
         else:
             self.hp -= 1
             self.health_timer = max(2000-30*self.p_stage, 500)
-    
-    def ballsUpdate(self, bar, stage_manager):
-        
+    def ballsOtherCollision(self, bar):
         for ball in self.balls:
-            ball.update(bar)
             if ball.isBarCollision(bar):
                 moreBall = int(self.perks_data["moreBall"]["val1"][self.perks.get("moreBall", 0)])
                 moreBall /= 100
                 degree = 3/2*math.pi + (random.random()*2-1)*(1/6)*math.pi
                 if random.random() <= moreBall:
                     self.balls.append(Ball(bar.x, bar.y-20, 8, self.ball_v, degree, False))
-            stage_manager.bricksCollision(ball, self)
-        for ball in self.balls:
-            ball.collisionHandling()
-        for ball in self.balls:
-            stage_manager.isBrickCollision(ball)
-        
+            ball.otherCollisions(bar)
+    
+
     def ballsRelease(self, bar):
         for ball in self.balls:
             ball.release(bar)
@@ -391,11 +526,15 @@ class Player:
                 else:
                     self.perks[self.random_perk_choice[self.perk_selection]] = 1
                 self.random_perk_choice = []
+            if event.key == pygame.K_r:
+                if self.left_reroll > 0:
+                    self.left_reroll -= 1
+                    self.random_perk_choice = list(random.sample(self.available_perks, k=3))
     def neodgm(self, text, tx, ty, size, color, screen):
         txts = text.split("$n")
         i = 0
         for txt in txts:
-            txt_font = pygame.font.Font( fonts_path+"neodgm.ttf", size)
+            txt_font = self.fonts[size]
             txt = txt_font.render(txt, True, color)
             txt_rect = txt.get_rect()
             txt_rect.center = (tx, ty+size*1.2*i)
@@ -405,7 +544,7 @@ class Player:
         return self.perks_data[perk]["desc"].replace("{val1}", self.perks_data[perk]["val1"][lv])
     def perkSelectionDisplay(self, screen):
         s = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
-        s.set_alpha(200)
+        s.set_alpha(230)
         s.fill((0,0,0))
         screen.blit(s, (0,0))
         self.neodgm("LEVEL UP!", SCREEN_WIDTH/2, 80, 50, "white", screen)
@@ -414,14 +553,16 @@ class Player:
 
         for i in range(3):
             if self.perk_selection == i: 
-                pygame.draw.rect(screen, "white", [x_coord[i]-60, SCREEN_HEIGHT/2-100, 120, 120], 2)
+                pygame.draw.rect(screen, "white", [x_coord[i]-60, SCREEN_HEIGHT/2-150, 120, 120], 2)
             cur_lv = self.perks.get(self.random_perk_choice[i], 0)+1
-            self.neodgm(self.perks_data[self.random_perk_choice[i]]["name"]+" "+self.roman[cur_lv], x_coord[i], SCREEN_HEIGHT/2-120, 18, "white", screen) 
+            self.neodgm(self.perks_data[self.random_perk_choice[i]]["name"]+" "+self.roman[cur_lv], x_coord[i], SCREEN_HEIGHT/2-170, 18, "white", screen) 
             img_rect = Player.perk_images[self.random_perk_choice[i]].get_rect()
-            img_rect.center = (x_coord[i], SCREEN_HEIGHT/2-40)
+            img_rect.center = (x_coord[i], SCREEN_HEIGHT/2-90)
             screen.blit(Player.perk_images[self.random_perk_choice[i]], img_rect)
-            self.neodgm(self.perkDesc(self.random_perk_choice[i], cur_lv), x_coord[i], SCREEN_HEIGHT/2+50, 15, "white", screen )
-        self.neodgm('좌우 방향키로 특성 선택$n스페이스바로 특성 확정', SCREEN_WIDTH/2, SCREEN_HEIGHT-180, 20, "white", screen)
+            self.neodgm(self.perkDesc(self.random_perk_choice[i], cur_lv), x_coord[i], SCREEN_HEIGHT/2, 15, "white", screen )
+        self.neodgm('r 키를 눌러 새로고침', SCREEN_WIDTH/2, SCREEN_HEIGHT-265, 25, "white", screen)
+        self.neodgm('(남은 횟수: '+str(self.left_reroll)+')', SCREEN_WIDTH/2, SCREEN_HEIGHT-240, 15, "white", screen)
+        self.neodgm('좌우 방향키로 특성 선택$nSpace Bar로 특성 확정', SCREEN_WIDTH/2, SCREEN_HEIGHT-160, 25, "white", screen)
     def pauseDisplay(self, screen):
         s = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
         s.set_alpha(220)
@@ -433,7 +574,8 @@ class Player:
             self.neodgm(self.perks_data[perk]["name"]+" "+self.roman[self.perks[perk]], SCREEN_WIDTH/2, cur_y, 20, "white", screen)
             cur_y += 25
         self.neodgm("Game Paused", SCREEN_WIDTH/2, SCREEN_HEIGHT-150, 30, "white", screen)
-        self.neodgm("Esc를 눌러 재시작", SCREEN_WIDTH/2, SCREEN_HEIGHT-110, 20, "white", screen)
+        self.neodgm("Esc를 눌러 게임 재개", SCREEN_WIDTH/2, SCREEN_HEIGHT-115, 20, "white", screen)
+        self.neodgm("Space Bar을 눌러 게임 재시작", SCREEN_WIDTH/2, SCREEN_HEIGHT-90, 20, "white", screen)
     def GUIDisplay(self, screen):
         pygame.draw.rect(screen, (20, 20, 20), (0, 0, SCREEN_WIDTH, 60))
         pygame.draw.rect(screen, (40, 40, 40), (0, 60, SCREEN_WIDTH, 110))
@@ -577,6 +719,7 @@ class Item(DropItem):
 
 
 class Ball:
+    cur_tick = 0
     img = 0
     collision_type = 0
     collision_dis = 1000
@@ -591,26 +734,12 @@ class Ball:
         self.on_bar = on_bar
         self.collision_dis = 1000
         self.collided = False
+        self.cur_tick = 1
     def display(self, screen):
         self.img = pygame.transform.scale(self.img, (self.radius*2, self.radius*2))
         img_rect = self.img.get_rect()
         img_rect.center = (self.x, self.y)
         screen.blit(self.img, img_rect)
-    def collisionHandling(self):
-        if not self.collided:
-            if self.collision_type == 1:
-                self.vx *= -1
-                self.x += 1.5*self.vx
-                self.collision_type = 0
-                self.collision_dis = 1000
-            elif self.collision_type == -1:
-                self.vy *= -1
-                self.y += 1.5*self.vy
-                self.collision_type = 0
-                self.collision_dis = 1000
-    def freeMove(self):
-        self.x+=self.vx
-        self.y+=self.vy      
     def isBarCollision(self, bar):
         return abs(self.y-bar.y) <= self.radius+bar.h/2 and abs(self.x-bar.x) <= self.radius+bar.l/2
     def onBarCollision(self, bar):
@@ -634,14 +763,13 @@ class Ball:
             self.vx *= -1
             self.x += 2*self.vx
 
-    def update(self, bar): #매 프레임마다 업데이트 되는 공기중에서의 움직임
+    def otherCollisions(self, bar): #매 프레임마다 업데이트 되는 공기중에서의 움직임
         if self.on_bar:
             self.x = bar.x
             self.y = bar.y-20
         else:
             self.onWallCollision()
             self.onBarCollision(bar)
-            self.freeMove() 
     def release(self, bar):
         if self.on_bar:
             self.on_bar = False
